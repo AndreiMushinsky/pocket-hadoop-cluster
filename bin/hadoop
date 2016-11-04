@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ `docker ps -aq --filter name=hadoop | wc -l` -eq 0 ]
+then
+  start-hadoop.sh
+elif [ `docker ps -q --filter name=hadoop | wc -l` -eq 0 ]
+then
+  docker start $(docker ps -aq --filter name=hadoop)
+  docker exec hadoop-master /bin/sh -c "start-dfs.sh && start-yarn.sh" 
+fi
+
+if [ $2 = "-copyFromLocal" ]
+then
+  path=(${3//// })
+  let "file_index=${#path[@]}-1"
+  file=${path[file_index]}
+  docker cp $3 hadoop-master:/tmp/$file
+  set -- "$1" "-moveFromLocal" "/tmp/$file" "$4"
+fi  
+
+COMMAND="hadoop $@"
+
+docker exec hadoop-master /bin/sh -c "$COMMAND"
